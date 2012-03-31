@@ -9,13 +9,6 @@ class IoService;
 
 namespace detail {
 
-struct FiberData
-{
-	IoService* service;
-	void* startParam;
-	Fiber self;
-};
-
 struct OverlappedIo
 {
 	OVERLAPPED Overlapped;
@@ -27,6 +20,13 @@ struct OverlappedAccept
 {
 	OVERLAPPED Overlapped;
 	Fiber fiber;
+};
+
+struct FiberData
+{
+	IoService* service;
+	void* startParam;
+	Fiber self;
 };
 
 } // namespace detail
@@ -154,6 +154,12 @@ public:
 		return fiber;
 	}
 
+	void scheduleFiber(Fiber self)
+	{
+		postScheduleFiberMessage(self);
+		switchToFiber(self, this->self);
+	}
+
 	void exitFiber(Fiber self)
 	{
 		postDeleteFiberMessage(self);
@@ -173,7 +179,7 @@ public:
 		{
 			if (quitLockRef == QUIT_MASK)
 				break;
-		
+
 			DWORD bytes;
 			ULONG_PTR key = ClientIoNoop;
 			LPOVERLAPPED overlapped;
@@ -188,6 +194,11 @@ public:
 inline Fiber spawnFiber(Fiber self, LPFIBER_START_ROUTINE lpStartAddress, void* startParam = NULL, size_t dwStackSize = 0)
 {
 	return getIoService(self)->spawnFiber(lpStartAddress, startParam, dwStackSize);
+}
+
+inline void scheduleFiber(Fiber self)
+{
+	getIoService(self)->scheduleFiber(self);
 }
 
 inline void exitFiber(Fiber self)
