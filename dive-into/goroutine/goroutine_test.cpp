@@ -17,7 +17,7 @@ void CALLBACK init(LPVOID lpParam)
 
 	printf("Fiber::init start\n");
 	spawnFiber(p.self, test);
-	scheduleFiber(p.self); // 主动出让cpu
+	scheduleFiber(p.self); // 主动出让cpu (可注释这句话对比差异，并思考为什么)
 	printf("Fiber::init term\n");
 }
 

@@ -10,7 +10,7 @@
 
 
 #pragma comment(lib, "ws2_32")
-#pragma comment(lib, "mswsock.lib")
+#pragma comment(lib, "mswsock")
 
 // -------------------------------------------------------------------------
 
@@ -185,6 +185,20 @@ public:
 		getIoService(self)->yield(self);
 
 		return o->result;
+	}
+
+	size_t write(Fiber self, const void* buf, size_t cb)
+	{
+		size_t total = 0;
+		while (cb > 0) {
+			size_t n = writeSome(self, buf, cb);
+			if (n == 0)
+				break;
+			total += n;
+			buf = (char*)buf + n;
+			cb -= n;
+		}
+		return total;
 	}
 
 	SocketObject accept(Fiber self)
