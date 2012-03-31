@@ -165,7 +165,7 @@ public:
 				return 0;
 			}
 		}
-		yield(self);
+		getIoService(self)->yield(self);
 
 		return o.result;
 	}
@@ -185,7 +185,7 @@ public:
 				return 0;
 			}
 		}
-		yield(self);
+		getIoService(self)->yield(self);
 
 		return o.result;
 	}

@@ -143,7 +143,6 @@ public:
 		return true;
 	}
 
-public:
 	Fiber startFiber(LPFIBER_START_ROUTINE lpStartAddress, void* startParam = NULL, size_t dwStackSize = 0)
 	{
 		Fiber fiber = doCreateFiber(lpStartAddress, startParam, dwStackSize);
@@ -157,6 +156,12 @@ public:
 		switchToFiber(self, this->self);
 	}
 
+	void yield(Fiber self)
+	{
+		switchToFiber(self, this->self);
+	}
+
+public:
 	void run(LPFIBER_START_ROUTINE lpStartAddress, void* startParam = NULL, size_t dwStackSize = 0)
 	{
 		Fiber fiber = doCreateFiber(lpStartAddress, startParam, dwStackSize);
@@ -185,12 +190,6 @@ inline Fiber startFiber(Fiber self, LPFIBER_START_ROUTINE lpStartAddress, void* 
 inline void exitFiber(Fiber self)
 {
 	getIoService(self)->exitFiber(self);
-}
-
-inline void yield(Fiber self)
-{
-	detail::FiberData* d = (detail::FiberData*)getFiberData(self);
-	switchToFiber(self, d->service->self);
 }
 
 // -------------------------------------------------------------------------
