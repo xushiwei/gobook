@@ -1,6 +1,8 @@
 #ifndef GOROUTINE_SERVICE_WINDOWS_H
 #define GOROUTINE_SERVICE_WINDOWS_H
 
+#include "../fiber.h"
+
 // -------------------------------------------------------------------------
 
 class IoService;
@@ -111,6 +113,8 @@ public:
 
 	bool processMessage(DWORD bytes, ULONG_PTR key, LPOVERLAPPED overlapped)
 	{
+		using namespace detail;
+
 		switch (key)
 		{
 		case ClientIoReadWrite:
@@ -184,12 +188,17 @@ public:
 
 inline Fiber startFiber(Fiber self, LPFIBER_START_ROUTINE lpStartAddress, void* startParam = NULL, size_t dwStackSize = 0)
 {
-	return getIoService(self)->startFiber(self, lpStartAddress, startParam, dwStackSize);
+	return getIoService(self)->startFiber(lpStartAddress, startParam, dwStackSize);
 }
 
 inline void exitFiber(Fiber self)
 {
 	getIoService(self)->exitFiber(self);
+}
+
+inline void postQuitMessage(Fiber self)
+{
+	getIoService(self)->postQuitMessage();
 }
 
 // -------------------------------------------------------------------------
@@ -205,7 +214,7 @@ public:
 public:
 	FiberSetup(LPVOID lpParam)
 	{
-		p = (detail::FiberData*)lpParam;
+		detail::FiberData* p = (detail::FiberData*)lpParam;
 		self = p->self;
 		val = p->startParam;
 		service = p->service;

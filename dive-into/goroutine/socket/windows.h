@@ -3,8 +3,11 @@
 
 #include "../service.h"
 
+#include <stdlib.h>
 #include <winsock2.h>
 #include <mswsock.h>
+#include <ws2tcpip.h>
+
 
 #pragma comment(lib, "ws2_32")
 #pragma comment(lib, "mswsock.lib")
@@ -32,27 +35,14 @@ namespace detail {
 
 inline long getAddress(const char* p, const char* pend)
 {
-	if (p == pend) {
-		return 0x7F000001;
-	}
-
-	char* hostname = (char*)malloc(pend - p);
-	memcpy(hostname, p, pend - p);
-
-	struct addrinfo* addrlist;
-	int s = 0;
-	if ((s = getaddrinfo(hostname, NULL, NULL, &addrlist)) != 0) {
-		free(hostname);
+	if (p == pend)
+	{
 		return 0;
 	}
-
-	long result = ntohl(((struct sockaddr_in*)addrlist->ai_addr)->sin_addr.s_addr);
-	freeaddrinfo(addrlist);
-	free(hostname);
-	return result;
+	return 0x7F000001; // notimpl
 }
 
-inline initSockaddr(SOCKADDR_IN& si, const char* host)
+inline void initSockaddr(SOCKADDR_IN& si, const char* host)
 {
 	long ip = 0;
 	int port = 0;
@@ -91,13 +81,24 @@ inline SOCKET createSocket()
 	return sd;
 }
 
+typedef BOOL (*WINAPI LPFN_ACCEPTEX)(
+  SOCKET sListenSocket,
+  SOCKET sAcceptSocket,
+  LPVOID lpOutputBuffer,
+  DWORD dwReceiveDataLength,
+  DWORD dwLocalAddressLength,
+  DWORD dwRemoteAddressLength,
+  LPDWORD lpdwBytesReceived,
+  LPOVERLAPPED lpOverlapped
+);
+
 inline LPFN_ACCEPTEX getAcceptEx(SOCKET s)
 {
 	static LPFN_ACCEPTEX lpfnAcceptEx;
 	if (lpfnAcceptEx == NULL)
 	{
 		DWORD dwBytes = 0;
-		GUID guidAcceptEx = WSAID_ACCEPTEX;
+		GUID guidAcceptEx = {0xb5367df1,0xcbac,0x11cf,{0x95,0xca,0x00,0x80,0x5f,0x48,0xa1,0x92}}; // WSAID_ACCEPTEX
 		WSAIoctl(
 			s, SIO_GET_EXTENSION_FUNCTION_POINTER,
 			&guidAcceptEx, sizeof(guidAcceptEx),
@@ -105,12 +106,6 @@ inline LPFN_ACCEPTEX getAcceptEx(SOCKET s)
 	}
 	return lpfnAcceptEx;
 }
-
-struct OVERLAPPED_IO
-{
-	OVERLAPPED Overlapped;
-	size_t result;
-};
 
 } // namespace detail
 
@@ -151,12 +146,13 @@ public:
 
 	size_t readSome(Fiber self, void* buf, size_t cb)
 	{
-		detail::OVERLAPPED_IO o;
-		memset(&o, 0, sizeof(o));
+		detail::OverlappedIo* o = new detail::OverlappedIo;
+		memset(o, 0, sizeof(*o));
+		o->fiber = self;
 
 		DWORD dwFlags = 0;
 		WSABUF wsaBuf = { cb, (char*)buf };
-		if (WSARecv(s, &wsaBuf, 1, NULL, &dwFlags, &o.Overlapped, NULL) == SOCKET_ERROR)
+		if (WSARecv(s, &wsaBuf, 1, NULL, &dwFlags, &o->Overlapped, NULL) == SOCKET_ERROR)
 		{
 			const DWORD nRet = WSAGetLastError();
 			if (nRet != ERROR_IO_PENDING)
@@ -167,16 +163,17 @@ public:
 		}
 		getIoService(self)->yield(self);
 
-		return o.result;
+		return o->result;
 	}
 
 	size_t writeSome(Fiber self, const void* buf, size_t cb)
 	{
-		detail::OVERLAPPED_IO o;
-		memset(&o, 0, sizeof(o));
+		detail::OverlappedIo* o = new detail::OverlappedIo;
+		memset(o, 0, sizeof(*o));
+		o->fiber = self;
 
 		WSABUF wsaBuf = { cb, (char*)buf };
-		if (WSASend(s, &wsaBuf, 1, NULL, 0, &o.Overlapped, NULL) == SOCKET_ERROR)
+		if (WSASend(s, &wsaBuf, 1, NULL, 0, &o->Overlapped, NULL) == SOCKET_ERROR)
 		{
 			const DWORD nRet = WSAGetLastError();
 			if (nRet != ERROR_IO_PENDING)
@@ -187,7 +184,7 @@ public:
 		}
 		getIoService(self)->yield(self);
 
-		return o.result;
+		return o->result;
 	}
 
 	SocketObject accept(Fiber self)
@@ -198,15 +195,16 @@ public:
 		// pay close attention to these parameters and buffer lengths
 		//
 		char buffer[SOCKADDR_BUFSIZE*2];
-		OVERLAPPED o;
-		ZeroMemory(&o, sizeof(o));
+		detail::OverlappedAccept* o = new detail::OverlappedAccept;
+		ZeroMemory(o, sizeof(*o));
+		o->fiber = self;
 
 		DWORD dwRecvNumBytes = 0;
-		LPFN_ACCEPTEX lpfnAcceptEx = detail::getAcceptEx(s);
+		detail::LPFN_ACCEPTEX lpfnAcceptEx = detail::getAcceptEx(s);
 		if (
 			lpfnAcceptEx(
 				s, sdAccept, buffer, 0,	SOCKADDR_BUFSIZE, SOCKADDR_BUFSIZE,
-				&dwRecvNumBytes, &o) == SOCKET_ERROR
+				&dwRecvNumBytes, &o->Overlapped) == SOCKET_ERROR
 			)
 		{
 			const DWORD nRet = WSAGetLastError();
@@ -216,7 +214,8 @@ public:
 				return INVALID_SOCKET;
 			}
 		}
-		yield(self);
+		IoService* service = getIoService(self);
+		service->yield(self);
 
 		// When the AcceptEx function returns, the socket sAcceptSocket is  
 		// in the default state for a connected socket. The socket sAcceptSocket  
@@ -231,14 +230,14 @@ public:
 			return INVALID_SOCKET;
 		}
 
-		getIoService(self)->bindIoReadWrite((HANDLE)sdAccept);
+		service->bindIoReadWrite((HANDLE)sdAccept);
 		return sdAccept;
 	}
 };
 
 // -------------------------------------------------------------------------
 
-inline SocketObject cerl_call listenSocket(Fiber self, const char* host)
+inline SocketObject listenSocket(Fiber self, const char* host)
 {
 	SOCKET sd = detail::createSocket();
 
