@@ -18,7 +18,7 @@ int main()
 	fiberMain = threadToFiber.convert((void*)"MainFiber");
 
 	fiberTest = createFiber(test, (void*)"TestFiber");
-	
+
 	switchToFiber(fiberMain, fiberTest);
 
 	printf("back to %s!\n", (char*)getFiberData(fiberMain));
