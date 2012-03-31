@@ -147,10 +147,10 @@ public:
 		return true;
 	}
 
-	Fiber startFiber(LPFIBER_START_ROUTINE lpStartAddress, void* startParam = NULL, size_t dwStackSize = 0)
+	Fiber spawnFiber(LPFIBER_START_ROUTINE lpStartAddress, void* startParam = NULL, size_t dwStackSize = 0)
 	{
 		Fiber fiber = doCreateFiber(lpStartAddress, startParam, dwStackSize);
-		switchToFiber(self, fiber);
+		postScheduleFiberMessage(fiber);
 		return fiber;
 	}
 
@@ -168,8 +168,7 @@ public:
 public:
 	void run(LPFIBER_START_ROUTINE lpStartAddress, void* startParam = NULL, size_t dwStackSize = 0)
 	{
-		Fiber fiber = doCreateFiber(lpStartAddress, startParam, dwStackSize);
-		postScheduleFiberMessage(fiber);
+		spawnFiber(lpStartAddress, startParam, dwStackSize);
 		for (;;)
 		{
 			if (quitLockRef == QUIT_MASK)
@@ -186,9 +185,9 @@ public:
 
 // -------------------------------------------------------------------------
 
-inline Fiber startFiber(Fiber self, LPFIBER_START_ROUTINE lpStartAddress, void* startParam = NULL, size_t dwStackSize = 0)
+inline Fiber spawnFiber(Fiber self, LPFIBER_START_ROUTINE lpStartAddress, void* startParam = NULL, size_t dwStackSize = 0)
 {
-	return getIoService(self)->startFiber(lpStartAddress, startParam, dwStackSize);
+	return getIoService(self)->spawnFiber(lpStartAddress, startParam, dwStackSize);
 }
 
 inline void exitFiber(Fiber self)
