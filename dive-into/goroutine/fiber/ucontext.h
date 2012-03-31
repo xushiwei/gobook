@@ -51,7 +51,7 @@ inline Fiber createFiber(
 	return (Fiber)fiber;
 }
 
-inline void destroyFiber(Fiber lpFiber)
+inline void deleteFiber(Fiber lpFiber)
 {
 	ucontext_t& context = ((detail::FiberContext*)lpFiber)->context;
 	free(context.uc_stack.ss_sp);

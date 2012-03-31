@@ -231,6 +231,7 @@ public:
 			return INVALID_SOCKET;
 		}
 
+		getIoService(self)->bindIoReadWrite((HANDLE)sdAccept);
 		return sdAccept;
 	}
 };

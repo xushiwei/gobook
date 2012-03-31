@@ -17,7 +17,7 @@ inline Fiber createFiber(
 	return (Fiber)CreateFiberEx(dwStackSize, dwStackSize, 0, lpStartAddress, lpParameter);
 }
 
-inline void destroyFiber(Fiber lpFiber)
+inline void deleteFiber(Fiber lpFiber)
 {
 	DeleteFiber(lpFiber);
 }

@@ -23,7 +23,7 @@ int main()
 
 	printf("back to %s!\n", (char*)getFiberData(fiberMain));
 
-	destroyFiber(fiberTest);
+	deleteFiber(fiberTest);
 
 	threadToFiber.unconvert();
 	return 0;
