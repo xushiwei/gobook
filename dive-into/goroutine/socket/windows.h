@@ -3,6 +3,7 @@
 
 #include "../service.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <winsock2.h>
 #include <mswsock.h>
@@ -237,7 +238,7 @@ public:
 		// sListenSocket parameter until SO_UPDATE_ACCEPT_CONTEXT is set on  
 		// the socket. Use the setsockopt function to set the SO_UPDATE_ACCEPT_CONTEXT  
 		// option, specifying sAcceptSocket as the socket handle and sListenSocket  
-		// as the option value.  
+		// as the option value.
 		if (setsockopt(sdAccept, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, (char*)&s, sizeof(s)) == SOCKET_ERROR)
 		{
 			closesocket(sdAccept);
@@ -270,6 +271,26 @@ inline SocketObject listenSocket(Fiber self, const char* host)
 			getIoService(self)->bindIoAccept((HANDLE)sd);
 			return sd;
 		}
+	}
+
+	closesocket(sd);
+	return INVALID_SOCKET;
+}
+
+// -------------------------------------------------------------------------
+
+inline SocketObject dialSocket(Fiber self, const char* host)
+{
+	SOCKET sd = detail::createSocket();
+
+	SOCKADDR_IN si;
+	detail::initSockaddr(si, host);
+
+	int nRet = connect(sd, (sockaddr*)&si, sizeof(si));
+	if (SOCKET_ERROR != nRet)
+	{
+		getIoService(self)->bindIoReadWrite((HANDLE)sd);
+		return sd;
 	}
 
 	closesocket(sd);

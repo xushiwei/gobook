@@ -6,8 +6,7 @@ void CALLBACK test(LPVOID lpParam)
 {
 	FiberSetup p(lpParam);
 
-	printf("Fiber::test start\n");	
-	postQuitMessage(p.self);
+	printf("Fiber::test start\n");
 	printf("Fiber::test term\n");
 }
 

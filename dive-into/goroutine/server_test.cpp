@@ -27,11 +27,10 @@ void CALLBACK server(LPVOID lpParam)
 	FiberSetup p(lpParam);
 
 	printf("Fiber::server start\n");
-	
+
 	SocketObject l = listenSocket(p.self, ":9999");
 	if (!l.good()) {
 		printf("listenSocket failed!\n");
-		postQuitMessage(p.self);
 		return;
 	}
 
@@ -39,7 +38,7 @@ void CALLBACK server(LPVOID lpParam)
 		SocketObject s = l.accept(p.self);
 		if (!s.good()) {
 			printf("accept failed!\n");
-			break;
+			continue;
 		}
 		spawnFiber(p.self, session, new SocketObject(s));
 	}

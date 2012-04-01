@@ -44,9 +44,9 @@ private:
 	enum { QUIT_MASK = 0x40000000 };
 
 	Fiber self;
+	Fiber init;
 	ThreadToFiber threadToFiber;
 	HANDLE iocp;
-	DWORD quitLockRef;
 
 private:
 	Fiber doCreateFiber(LPFIBER_START_ROUTINE lpStartAddress, void* startParam = NULL, size_t dwStackSize = 0)
@@ -55,7 +55,6 @@ private:
 		p->service = this;
 		p->startParam = startParam;
 		p->self = createFiber(lpStartAddress, p, dwStackSize);
-		++quitLockRef;
 		return p->self;
 	}
 
@@ -64,7 +63,9 @@ private:
 		detail::FiberData* p = (detail::FiberData*)getFiberData(fiberToKill);
 		delete p;
 		deleteFiber(fiberToKill);
-		--quitLockRef;
+		if (fiberToKill == init) {
+			postQuitMessage();
+		}
 	}
 
 public:
@@ -82,8 +83,8 @@ public:
 	IoService()
 	{
 		self = threadToFiber.convert(NULL);
+		init = NULL;
 		iocp = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);
-		quitLockRef = 0;
 	}
 
 	void bindIoAccept(HANDLE fd)
@@ -138,9 +139,6 @@ public:
 		case ClientIoDeleteFiber:
 			doDeleteFiber((Fiber)overlapped);
 			break;
-		case ClientIoQuit:
-			quitLockRef |= QUIT_MASK;
-			break;
 		default:
 			return false;
 		}
@@ -174,16 +172,15 @@ public:
 public:
 	void run(LPFIBER_START_ROUTINE lpStartAddress, void* startParam = NULL, size_t dwStackSize = 0)
 	{
-		spawnFiber(lpStartAddress, startParam, dwStackSize);
+		init = spawnFiber(lpStartAddress, startParam, dwStackSize);
 		for (;;)
 		{
-			if (quitLockRef == QUIT_MASK)
-				break;
-
 			DWORD bytes;
 			ULONG_PTR key = ClientIoNoop;
 			LPOVERLAPPED overlapped;
 			GetQueuedCompletionStatus(iocp, &bytes, &key, &overlapped, INFINITE);
+			if (key == ClientIoQuit)
+				break;
 			processMessage(bytes, key, overlapped);
 		}
 	}
@@ -212,7 +209,6 @@ inline void postQuitMessage(Fiber self)
 }
 
 // -------------------------------------------------------------------------
-// class FiberSetup
 
 class FiberSetup
 {
