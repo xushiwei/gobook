@@ -8,7 +8,7 @@ void CALLBACK client(LPVOID lpParam)
 
 	printf("Fiber::client start\n");
 
-	SocketObject s = dialSocket(p.self, "127.0.0.1:9999");
+	SocketObject s = dialSocket(p.self, "localhost:9999");
 	if (!s.good())
 	{
 		printf("dialSocket failed!\n");
@@ -25,6 +25,7 @@ void CALLBACK client(LPVOID lpParam)
 		printf("read: %s\n", buf);
 	}
 
+	s.close();
 	printf("Fiber::client term\n");
 }
 

@@ -3,12 +3,10 @@
 
 #include "../service.h"
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <winsock2.h>
 #include <mswsock.h>
 #include <ws2tcpip.h>
-
 
 #pragma comment(lib, "ws2_32")
 #pragma comment(lib, "mswsock")
@@ -124,13 +122,7 @@ public:
 		: s(a)
 	{
 	}
-	~SocketObject()
-	{
-		if (s != INVALID_SOCKET)
-			closesocket(s);
-	}
 
-public:
 	bool good() const
 	{
 		return s != INVALID_SOCKET;
@@ -158,6 +150,7 @@ public:
 			const DWORD nRet = WSAGetLastError();
 			if (nRet != ERROR_IO_PENDING)
 			{
+				delete o;
 				close();
 				return 0;
 			}
@@ -179,6 +172,7 @@ public:
 			const DWORD nRet = WSAGetLastError();
 			if (nRet != ERROR_IO_PENDING)
 			{
+				delete o;
 				close();
 				return 0;
 			}
@@ -226,6 +220,7 @@ public:
 			if (nRet != ERROR_IO_PENDING)
 			{
 				closesocket(sdAccept);
+				delete o;
 				return INVALID_SOCKET;
 			}
 		}

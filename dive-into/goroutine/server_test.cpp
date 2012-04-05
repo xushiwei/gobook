@@ -19,6 +19,7 @@ void CALLBACK session(LPVOID lpParam)
 		s.write(p.self, buf, n);
 	}
 
+	s.close();
 	printf("Fiber::session term\n");
 }
 
@@ -35,11 +36,13 @@ void CALLBACK server(LPVOID lpParam)
 	}
 
 	for (;;) {
+		printf("accept start\n");
 		SocketObject s = l.accept(p.self);
 		if (!s.good()) {
 			printf("accept failed!\n");
 			continue;
 		}
+		printf("accept done\n");
 		spawnFiber(p.self, session, new SocketObject(s));
 	}
 
