@@ -9,6 +9,10 @@ type IReadWriter interface {
 	Write(buf *byte, cb int) int
 }
 
+type IWriter interface {
+	Write(buf *byte, cb int) int
+}
+
 // -------------------------------------------------------------
 
 type A struct {
@@ -53,9 +57,11 @@ func (this *B) Foo() {
 // -------------------------------------------------------------
 
 func main() {
-	var p IReadWriter = NewB(8)
+	var p IReadWriter = NewB(9)
+	var p2 IWriter = p
 	p.Read(nil, 10)
-	p.Write(nil, 10)
+	p2.Write(nil, 10)
 }
 
 // -------------------------------------------------------------
+

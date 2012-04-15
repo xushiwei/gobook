@@ -31,6 +31,23 @@ InterfaceInfo g_InterfaceInfo_IReadWriter = {
 
 // -------------------------------------------------------------
 
+typedef struct _IWriterTbl {
+	InterfaceInfo* inter;
+	TypeInfo* type;
+	int (*Write)(void* this, char* buf, int cb);
+} IWriterTbl;
+
+typedef struct _IWriter {
+	IWriterTbl* tab;
+	void* data;
+} IWriter;
+
+InterfaceInfo g_InterfaceInfo_IWriter = {
+	// ...
+};
+
+// -------------------------------------------------------------
+
 typedef struct _A {
 	int a;
 } A;
@@ -91,14 +108,26 @@ IReadWriterTbl g_Itbl_IReadWriter_B = {
 	(int (*)(void* this, char* buf, int cb))B_Write
 };
 
+IWriterTbl* Itbl_IWriter_From_IReadWriter(IReadWriterTbl* src) {
+	IWriterTbl* dest = (IWriterTbl*)malloc(sizeof(IWriterTbl));
+	dest->inter = &g_InterfaceInfo_IWriter,
+	dest->type = src->type;
+	dest->Write = src->Write;
+	return dest;
+}
+
 int main() {
-	B* unnamed = NewB(8);
+	B* unnamed = NewB(9);
 	IReadWriter p = {
 		&g_Itbl_IReadWriter_B,
 		unnamed
 	};
+	IWriter p2 = {
+		Itbl_IWriter_From_IReadWriter(p.tab),
+		p.data
+	};
 	p.tab->Read(p.data, NULL, 10);
-	p.tab->Write(p.data, NULL, 10);
+	p2.tab->Write(p2.data, NULL, 10);
 	return 0;
 }
 
