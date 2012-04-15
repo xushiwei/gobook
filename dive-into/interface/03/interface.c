@@ -176,6 +176,8 @@ ITbl* MakeItbl(InterfaceInfo* intf, TypeInfo* ti) {
 			return NULL;
 		}
 	}
+	dest->inter = intf;
+	dest->type = ti;
 	return dest;
 }
 
