@@ -72,7 +72,7 @@ void B_Foo(B* this) {
 }
 
 TypeInfo g_TypeInfo_B = {
-    // ...
+	// ...
 };
 
 B* NewB(int params) {
